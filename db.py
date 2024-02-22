@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy import Boolean, create_engine, Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -19,6 +19,7 @@ class Contact(Base):
     email = Column(String(150), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
     refresh_token = Column(String(255), nullable=True)
+    confirmed = Column(Boolean, default=False)
 
     def __repr__(self):
         return f"User({self.email})"

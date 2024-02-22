@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: example
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: example_db
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - SQLALCHEMY_DATABASE_URL=${SQLALCHEMY_DATABASE_URL}
+    depends_on:
+      - db

@@ -1,3 +1,13 @@
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
+
+
+
 from fastapi import FastAPI, Depends, Path, Query, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel,Field
@@ -7,10 +17,21 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
 from auth import create_access_token, create_refresh_token, get_current_user, Hash, get_email_form_refresh_token
+from fastapi import APIRouter
+from fastapi.middleware.cors import CORSMiddleware
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name="your_cloud_name",
+    api_key="your_api_key",
+    api_secret="your_api_secret"
+)
 
 app = FastAPI()
 hash_handler = Hash()
 security = HTTPBearer()
+router = APIRouter()
 
 @app.get("/contacts/all")
 def get_all_contacts(session: Session = Depends(get_db)):
@@ -61,9 +82,6 @@ def create_new_contact(contact: User, session=Depends(get_db)):
     session.commit()
     return contact
     
-
-
-
 
 @app.put("/contacts/{user_id}")
 def update_contact(
@@ -126,7 +144,6 @@ async def login(body: OAuth2PasswordRequestForm = Depends(), db: Session = Depen
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email")
     if not hash_handler.verify_password(body.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
-    # Generate JWT
     access_token = await create_access_token(data={"sub": user.email})
     refresh_token = await create_refresh_token(data={"sub": user.email})
     user.refresh_token = refresh_token
@@ -151,11 +168,52 @@ async def refresh_token(credentials: HTTPAuthorizationCredentials = Security(sec
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
-# @app.get("/")
-# async def root():
-#     return {"message": "Hello World"}
+@app.get("/verify-email/{email}")
+async def verify_email(email: str, db: Session = Depends(get_db)):
+    user = db.query(Contact).filter(Contact.email == email).first()
+    if user:
+        user.confirmed = True
+        db.commit()
+        return {"message": "Email verified successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from fastapi import File, UploadFile
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name="your_cloud_name",
+    api_key="your_api_key",
+    api_secret="your_api_secret"
+)
+
+@app.post("/users/{user_id}/avatar")
+async def update_avatar(user_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    user = db.query(Contact).filter(Contact.id == user_id).first()
+    if user:
+        upload_result = cloudinary.uploader.upload(file.file)
+        user.avatar_url = upload_result['secure_url']
+        db.commit()
+        return {"message": "Avatar updated successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
 
 
-@app.get("/secret")
-async def read_item(current_user: User = Depends(get_current_user)):
-    return {"message": 'secret router', "owner": current_user.email}
+@app.post("/reset-password")
+async def reset_password(email: str, db: Session = Depends(get_db)):
+    user = db.query(Contact).filter(Contact.email == email).first()
+    if user:
+        return {"message": "Password reset instructions sent to your email"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
