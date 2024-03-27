@@ -20,7 +20,7 @@ This repository extends the functionality of the previous homework assignment by
 - **FastAPI:** FastAPI is utilized for developing the REST API endpoints with Python.
 - **JWT:** JSON Web Tokens are used for secure authentication and authorization.
 - **SQLAlchemy ORM:** SQLAlchemy ORM facilitates interaction with the PostgreSQL database.
-- **PostgreSQL:** PostgreSQL serves as the backend database for storing user and contact information.
+- **SQLite:** SQLite serves as the backend database for storing user and contact information.
 
 ## Getting Started
 
